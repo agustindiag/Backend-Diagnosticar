@@ -76,7 +76,7 @@ router.post('/login', async (req,res,next)=>{
                     dni: dni
                 }
             })
-            if(user.length > 0){
+            if(user.length > 0){ 
                 user[0] = user[0].toJSON()
                 if(user[0].pw == pw){
                     res.send('Credenciales correctas.')
