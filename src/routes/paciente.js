@@ -64,9 +64,8 @@ router.post('/register', async (req,res,next)=>{
 
 router.post('/login', async (req,res,next)=>{
     try{
+        console.log("object")
         const {dni, pw} = req.body
-
-        console.log(dni, pw)
         
         if(!dni || !pw){
             res.send('Completar todos los campos.')
@@ -79,7 +78,8 @@ router.post('/login', async (req,res,next)=>{
             if(user.length > 0){ 
                 user[0] = user[0].toJSON()
                 if(user[0].pw == pw){
-                    res.send('Credenciales correctas.')
+                    delete user[0].pw
+                    res.send(user[0])
                 }else{
                     res.send("Contraseña incorrecta.")
                 }
@@ -91,5 +91,44 @@ router.post('/login', async (req,res,next)=>{
         next(error)
     }
 })
+
+router.get('/turnos', async (req,res,next)=>{
+
+    const {dni} = req.query
+
+    const username = "abanegas";
+    const password = "Diag123!";
+
+    try{
+
+        const turnos = []
+
+        const turnosPaciente = await axios.get(`https://diagnosticar.alephoo.com/api/v3/admision/turnos?filter[persona.documento]=${dni}`, {
+            headers: {
+                "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
+            }
+        })
+
+
+        const obj = {
+            especialidad: "",
+            detalle: "",
+            fecha: "",
+            hora: ""
+        }
+
+        turnos.push(obj)
+        
+        res.send(turnosPaciente.data.included)
+    }catch(error){
+        next(error)
+    }
+})
+
+/*
+
+https://diagnosticar.alephoo.com/api/v3/admision/turnos?filter[persona.documento]=40811186
+
+*/
 
 module.exports = router;
