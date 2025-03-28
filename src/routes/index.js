@@ -205,35 +205,68 @@ router.get('/turnosdisponibles', async (req, res, next) => {
         institucion,
         especialidad,
         profesional,
-
+        fechaInicio
      } = req.query
 
     try {
 
         const turnos = []
 
-        const turnosRes = await axios.get(`https://diagnosticar.alephoo.com/api/v3/admision/turnos/disponibles?filter[instituciones]=${institucion}&filter[especialidades]=${especialidad}&filter[profesionales]=${profesional}&filter[fecha]=2025-03-27&filter[incluirAdHoc]=false&offset=1&meta[incluirAgendasSinTurnosDisponibles]=0&meta[ignorarReglas]=0`, {
+        const turnosRes = await axios.get(`https://diagnosticar.alephoo.com/api/v3/admision/turnos/disponibles?filter[instituciones]=${institucion}&filter[especialidades]=${especialidad}&filter[profesionales]=${profesional}&filter[fecha]=${fechaInicio}&filter[incluirAdHoc]=false&offset=1&meta[incluirAgendasSinTurnosDisponibles]=0&meta[ignorarReglas]=0`, {
             headers: {
                 "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
             }
         })
 
-        /* for (let i = 0; i < profesionalesRes.data.data.length; i++) {
+        for (let i = 0; i < turnosRes.data.data.length; i++) {
             const obj = {
-                id: profesionalesRes.data.data[i].id,
-                apellido: profesionalesRes.data.included[i].attributes.apellidos,
-                nombre: profesionalesRes.data.included[i].attributes.nombres,
-                legajo: profesionalesRes.data.data[i].attributes.legajo
+                id: i,
+                fecha: turnosRes.data.data[i].attributes.fecha,
+                hora: turnosRes.data.data[i].attributes.hora
             }
 
-            profesionales.push(obj)
-        } */
+            turnos.push(obj)
+        }
 
-        res.send(`${turnosRes.data.data.length}`)
+        res.send(turnosRes.data.data)
 
     } catch (error) {
         next(error)
     }
 })
+
+router.post('/turno', async (req, res, next) => {
+    try {
+        const { dni, pw } = req.body
+
+        const body = {
+
+        }
+
+        if (!dni || !pw) {
+            res.send('Completar todos los campos.')
+        } else {
+            const user = await axios.post(`https://diagnosticar.alephoo.com/api/v3/admin/profesionales?filter[especialidades]=${idEspecialidad}`, body, {
+            headers: {
+                "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
+            }
+        })
+            if (user.length > 0) {
+                user[0] = user[0].toJSON()
+                if (user[0].pw == pw) {
+                    delete user[0].pw
+                    res.send(user[0])
+                } else {
+                    res.send("Contraseña incorrecta.")
+                }
+            } else {
+                res.send("Usuario no existe")
+            }
+        }
+    } catch (error) {
+        next(error)
+    }
+})
+
 
 module.exports = router;
