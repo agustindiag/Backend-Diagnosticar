@@ -96,41 +96,120 @@ router.post('/login', async (req, res, next) => {
     }
 })
 
+
+
+/*  */
+
+
+
 router.get('/turnos', async (req, res, next) => {
 
-    const { dni } = req.query
+    const { dni, idTurno } = req.query
 
     try {
 
-        const turnos = []
+        if (dni) {
+            const turnos = []
 
-        const turnosPaciente = await axios.get(`https://diagnosticar.alephoo.com/api/v3/admision/turnos?filter[persona.documento]=${dni}`, {
-            headers: {
-                "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
-            }
-        })
-
-        const filtroTurnos = turnosPaciente.data.data.filter(e => e.type === "Admision\\Turnoprogramado")
-
-        for (let i = 0; i < filtroTurnos.length; i++) {
-
-            const especialidad = await axios.get(`${filtroTurnos[i].relationships.agenda.links.self}`, {
+            const turnosPaciente = await axios.get(`https://diagnosticar.alephoo.com/api/v3/admision/turnos?filter[persona.documento]=${dni}`, {
                 headers: {
                     "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
                 }
             })
 
-            const obj = {
-                especialidad: especialidad.data.included.filter(e => e.type === "Admin\\Especialidad")[0].attributes.nombre,
-                detalle: "",
-                fecha: filtroTurnos[i].attributes.fecha,
-                hora: filtroTurnos[i].attributes.hora
+            const filtroTurnos = turnosPaciente.data.data.filter(e => e.type === "Admision\\Turnoprogramado")
+
+            for (let i = 0; i < filtroTurnos.length; i++) {
+
+                const especialidad = await axios.get(`${filtroTurnos[i].relationships.agenda.links.self}`, {
+                    headers: {
+                        "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
+                    }
+                })
+
+                const obj = {
+                    especialidad: especialidad.data.included.filter(e => e.type === "Admin\\Especialidad")[0].attributes.nombre,
+                    detalle: "",
+                    fecha: filtroTurnos[i].attributes.fecha,
+                    hora: filtroTurnos[i].attributes.hora
+                }
+
+                turnos.push(obj)
             }
 
-            turnos.push(obj)
+            res.send(turnos)
+        } else {
+            const turno = []
+            let estudiosString = ""
+
+            const turnoPaciente = await axios.get(`https://diagnosticar.alephoo.com/api/v3/admision/turnos/${idTurno}`, {
+                headers: {
+                    "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
+                }
+            })
+
+            if (turnoPaciente.data.data.type === "Admision\\Turnoprogramado") {
+
+                const especialidad = await axios.get(`${turnoPaciente.data.data.relationships.agenda.links.self}`, {
+                    headers: {
+                        "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
+                    }
+                })
+
+                let estudios = turnoPaciente.data.included.filter(e => e.type === "Admin\\Estudio")
+
+                for (let i = 0; i < estudios.length; i++) {
+                    if(i == 0){
+                        estudiosString = estudiosString + estudios[i].attributes.nombre
+                    }else{
+                        estudiosString = estudiosString + ", " + estudios[i].attributes.nombre
+                    }
+                }
+
+                const obj = {
+                    especialidad: especialidad.data.included.filter(e => e.type === "Admin\\Especialidad")[0].attributes.nombre,
+                    detalle: estudiosString,
+                    fecha: turnoPaciente.data.data.attributes.fecha,
+                    hora: turnoPaciente.data.data.attributes.hora
+                }
+
+                turno.push(obj)
+            }
+
+            res.send(turno)
         }
 
-        res.send(turnosPaciente.data.data[3])
+    } catch (error) {
+        next(error)
+    }
+})
+
+
+
+
+
+router.get('/instituciones', async (req, res, next) => {
+
+    try {
+
+        const instituciones = []
+
+        const institucionesRes = await axios.get(`https://diagnosticar.alephoo.com/api/v3/admin/instituciones`, {
+            headers: {
+                "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
+            }
+        })
+
+        for (let i = 0; i < institucionesRes.data.data.length; i++) {
+            const obj = {
+                id: institucionesRes.data.data[i].id,
+                nombre: institucionesRes.data.data[i].attributes.nombre,
+            }
+
+            instituciones.push(obj)
+        }
+
+        res.send(instituciones)
 
     } catch (error) {
         next(error)
@@ -199,14 +278,66 @@ router.get('/profesionales', async (req, res, next) => {
     }
 })
 
+/* agendas */
+
+router.get('/agendas', async (req, res, next) => {
+
+    const { idProfesional } = req.query
+
+    try {
+
+        const agenda = []
+        
+        function obtenerFechas(fechaInicio, fechaFin, diaSemanal) {
+            const fechas = [];
+            const inicio = new Date(fechaInicio);
+            const fin = new Date(fechaFin);
+            
+            if (diaSemanal < 1 || diaSemanal > 7) {
+                throw new Error("El día de la semana debe estar entre 1 (domingo) y 7 (sábado)");
+            }
+            
+            let fechaActual = new Date(inicio);
+            
+            while (fechaActual <= fin) {
+                if (fechaActual.getDay() === (diaSemanal % 7)) {
+                    fechas.push(new Date(fechaActual));
+                }
+                fechaActual.setDate(fechaActual.getDate() + 1);
+            }
+            
+            return fechas.map(date => date.toISOString().split('T')[0]);
+        }
+
+        const agendaProfesional = await axios.get(`https://diagnosticar.alephoo.com/api/v3/admision/agendas?filter[personal]=${idProfesional}`, {
+            headers: {
+                "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
+            }
+        })
+
+        for (let i = 0; i < agendaProfesional.data.data.length; i++) {
+            const obj = {
+            }
+
+            agenda.push(obj)
+        }
+
+        res.send(agendaProfesional)
+
+    } catch (error) {
+        next(error)
+    }
+})
+
+
 router.get('/turnosdisponibles', async (req, res, next) => {
 
-    const { 
+    const {
         institucion,
         especialidad,
         profesional,
         fechaInicio
-     } = req.query
+    } = req.query
 
     try {
 
@@ -240,17 +371,65 @@ router.post('/turno', async (req, res, next) => {
         const { dni, pw } = req.body
 
         const body = {
-
+            "data": {
+                "type": "Admision\\Turnoprogramado",
+                "id": null,
+                "attributes": {
+                    "hora": "09:40",
+                    "fecha": "2025-04-01",
+                    "orden": 2,
+                    "sobreturno": false,
+                    "observacion": null
+                },
+                "relationships": {
+                    "agenda": {
+                        "data": {
+                            "type": "Admision\\Agenda",
+                            "id": 2981
+                        },
+                        "links": {
+                            "self": "https://diagnosticar.alephoo.com/api/v3/admision/agendas/2981"
+                        }
+                    },
+                    "persona": {
+                        "data": {
+                            "id": 145533,
+                            "type": "Admin\\Persona"
+                        }
+                    },
+                    "consulta": {
+                        "data": null
+                    },
+                    "institucion": {
+                        "data": null
+                    },
+                    "estadoTurno": {
+                        "data": null
+                    },
+                    "bonos": [],
+                    "estudios": [],
+                    "especialidad": {
+                        "type": "Admin\\Especialidad",
+                        "id":36,
+                        "attributes": {
+                            "nombre":"Odontología",
+                            "esGrupal":false,
+                            "esUrgencia":false,
+                            "esEquipo":false
+                        }
+                    }
+                }
+            }
         }
 
         if (!dni || !pw) {
             res.send('Completar todos los campos.')
         } else {
             const user = await axios.post(`https://diagnosticar.alephoo.com/api/v3/admin/profesionales?filter[especialidades]=${idEspecialidad}`, body, {
-            headers: {
-                "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
-            }
-        })
+                headers: {
+                    "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`
+                }
+            })
             if (user.length > 0) {
                 user[0] = user[0].toJSON()
                 if (user[0].pw == pw) {
@@ -267,6 +446,10 @@ router.post('/turno', async (req, res, next) => {
         next(error)
     }
 })
+
+/* put turnos */
+
+/* delete turnos */
 
 
 module.exports = router;
