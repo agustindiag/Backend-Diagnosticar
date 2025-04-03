@@ -159,9 +159,9 @@ router.get('/turnos', async (req, res, next) => {
                 let estudios = turnoPaciente.data.included.filter(e => e.type === "Admin\\Estudio")
 
                 for (let i = 0; i < estudios.length; i++) {
-                    if(i == 0){
+                    if (i == 0) {
                         estudiosString = estudiosString + estudios[i].attributes.nombre
-                    }else{
+                    } else {
                         estudiosString = estudiosString + ", " + estudios[i].attributes.nombre
                     }
                 }
@@ -287,25 +287,25 @@ router.get('/agendas', async (req, res, next) => {
     try {
 
         const agenda = []
-        
+
         function obtenerFechas(fechaInicio, fechaFin, diaSemanal) {
             const fechas = [];
             const inicio = new Date(fechaInicio);
             const fin = new Date(fechaFin);
-            
+
             if (diaSemanal < 1 || diaSemanal > 7) {
                 throw new Error("El día de la semana debe estar entre 1 (domingo) y 7 (sábado)");
             }
-            
+
             let fechaActual = new Date(inicio);
-            
+
             while (fechaActual <= fin) {
                 if (fechaActual.getDay() === (diaSemanal % 7)) {
                     fechas.push(new Date(fechaActual));
                 }
                 fechaActual.setDate(fechaActual.getDate() + 1);
             }
-            
+
             return fechas.map(date => date.toISOString().split('T')[0]);
         }
 
@@ -315,14 +315,48 @@ router.get('/agendas', async (req, res, next) => {
             }
         })
 
+        /* const data = new URLSearchParams();
+        data.append('adm_dnh_fecha_inicio', `${hoy.getDate() < 10 ? "0" + hoy.getDate() : hoy.getDate()}/${(hoy.getMonth() + 1) < 10 ? "0" + (hoy.getMonth() + 1) : (hoy.getMonth() + 1)}/${hoy.getFullYear()}`);
+        data.append('text_adm_dnh_personal', `${agendaProfesional.data.included.filter(e => e.type === "Admin\\Persona")[0].attributes.apellidos} ${agendaProfesional.data.included.filter(e => e.type === "Admin\\Persona")[0].attributes.nombres}`);
+        data.append('adm_dnh_personal', `${agendaProfesional.data.included.filter(e => e.type === "Admin\\Personal")[0].id}`);
+        data.append('adm_dnh_causa', 0); */
+
+        /* const nohabiles = await axios.post(`https://diagnosticar.alephoo.com/admin/diasnohabiles_list/showList/`, data, {
+            headers: {
+                "Authorization": `Basic YWJhbmVnYXM6RGlhZzEyMyE=`,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        })
+
+        const filtrarFechasNoHabiles1 = nohabiles.data.split("<td class='td_center'>")
+
+        for (let i = 1; i < filtrarFechasNoHabiles1.length; i++) {
+
+            let obj = {
+                fechaInicio: filtrarFechasNoHabiles1[i].split("</td>")[0],
+                fechaFin: filtrarFechasNoHabiles1[i + 1].split("</td>")[0]
+            }
+
+            let fechaInicio = new Date(obj.fechaInicio.split("/").reverse().join("-"));
+            let fechaFin = new Date(obj.fechaFin.split("/").reverse().join("-"));
+            let fechaActual = fechaInicio;
+
+            while (fechaActual <= fechaFin) {
+                fechasNoHabiles.push(new Date(fechaActual).map(date => date.toISOString().split('T')[0]));
+                fechaActual.setDate(fechaActual.getDate() + 1);
+            }
+
+            i++
+        }
+
         for (let i = 0; i < agendaProfesional.data.data.length; i++) {
             const obj = {
             }
 
             agenda.push(obj)
-        }
+        } */
 
-        res.send(agendaProfesional)
+        res.send(agendaProfesional.data)
 
     } catch (error) {
         next(error)
@@ -410,12 +444,12 @@ router.post('/turno', async (req, res, next) => {
                     "estudios": [],
                     "especialidad": {
                         "type": "Admin\\Especialidad",
-                        "id":36,
+                        "id": 36,
                         "attributes": {
-                            "nombre":"Odontología",
-                            "esGrupal":false,
-                            "esUrgencia":false,
-                            "esEquipo":false
+                            "nombre": "Odontología",
+                            "esGrupal": false,
+                            "esUrgencia": false,
+                            "esEquipo": false
                         }
                     }
                 }
